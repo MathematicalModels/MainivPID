@@ -291,7 +291,7 @@ def test_pid(P=0.2, I=0.0, D=0.0, L=100):
 
 
 if __name__ == "__main__":
-    test_pid(1.2, 1, 0, L=2000)
+    test_pid(1.2, 1, 0, L=1000)
 #    test_pid(0.8, L=50)
 
 
