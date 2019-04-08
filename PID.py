@@ -44,6 +44,9 @@ class PID:
         self.current_time = time.time()
         self.last_time = self.current_time
 
+        self.signal = 0;# The accumulated output which aims at approximate the setpoint
+        self.signal_with_quit = 0;
+
         self.clear()
 
     def clear(self):
@@ -54,6 +57,9 @@ class PID:
         self.ITerm = 0.0
         self.DTerm = 0.0
         self.last_error = 0.0
+        self.abs_ITerm = 0.0
+        self.window_abs_ITerm = 0.0 # abs_ITerm - old_abs_Iterm
+        self.abs_error = 0.0
 
         # Windup Guard
         self.int_error = 0.0
@@ -61,7 +67,7 @@ class PID:
 
         self.output = 0.0
 
-    def update(self, feedback_value):
+    def update(self, feedback_value, old_abs_Iterm):
         """Calculates PID value for given reference feedback
 
         .. math::
@@ -73,6 +79,8 @@ class PID:
            Test PID with Kp=1.2, Ki=1, Kd=0.001 (test_pid.py)
 
         """
+        flag = 0
+
         error = self.SetPoint - feedback_value
 
         self.current_time = time.time()
@@ -82,6 +90,9 @@ class PID:
         if (delta_time >= self.sample_time):
             self.PTerm = self.Kp * error
             self.ITerm += error * delta_time
+            self.abs_error = abs(error*delta_time)
+            self.abs_ITerm += abs(error * delta_time)
+            self.window_abs_ITerm = self.abs_ITerm - old_abs_Iterm
 
             if (self.ITerm < -self.windup_guard):
                 self.ITerm = -self.windup_guard
@@ -89,7 +100,7 @@ class PID:
                 self.ITerm = self.windup_guard
 
             self.DTerm = 0.0
-            if delta_time > 0:
+            if delta_time > 1:
                 self.DTerm = delta_error / delta_time
 
             # Remember last time and last error for next calculation
@@ -97,6 +108,16 @@ class PID:
             self.last_error = error
 
             self.output = self.PTerm + (self.Ki * self.ITerm) + (self.Kd * self.DTerm)
+
+            self.signal = self.signal + self.output # Signal = Accumulation of output
+
+            self.signal_with_quit = self.signal_with_quit + self.output
+
+            #if flag == 1: # Noisy-TV detected
+            #    self.output = -5
+                #self.abs_ITerm = 0
+
+
 
     def setKp(self, proportional_gain):
         """Determines how aggressively the PID reacts to the current error with setting Proportional Gain"""
